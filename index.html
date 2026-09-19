@@ -1,0 +1,1364 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#ffb6d5">
+<title>Умный тренажёр</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%;overscroll-behavior:none;font-family:'Comic Sans MS','Segoe UI',cursive,system-ui,sans-serif;background:linear-gradient(135deg,#ffd6e8,#e0c3fc 50%,#c2e9fb);color:#4a148c}
+  .app{display:flex;flex-direction:column;height:100vh;height:100dvh;max-width:640px;margin:0 auto;background:#fff;overflow:hidden}
+  .header{display:flex;align-items:center;justify-content:space-between;padding:6px 12px;background:#fff;border-bottom:2px solid #ffd6e8;flex-shrink:0;padding-top:calc(6px + env(safe-area-inset-top))}
+  .stars{font-size:13px;letter-spacing:.5px;color:#f7b500;line-height:1;overflow:hidden;white-space:nowrap;max-width:80%}
+  .hint-btn{border:none;background:#ffe1f0;color:#a02c6f;font-size:18px;width:34px;height:34px;border-radius:50%;cursor:pointer;font-family:inherit;flex-shrink:0}
+  .main-scroll{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding:10px 12px 20px}
+  .screen{display:none}.screen.active{display:block;animation:fade .3s ease}
+  @keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  .task-row{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+  .task-title{flex:1;font-size:17px;font-weight:bold;color:#6a1b9a;text-align:center;min-height:24px}
+  .speak-btn{border:none;background:linear-gradient(135deg,#ffd54f,#fb8c00);color:#fff;font-size:22px;width:48px;height:48px;border-radius:50%;cursor:pointer;flex-shrink:0;box-shadow:0 4px 10px rgba(251,140,0,.35)}
+  .speak-btn:active{transform:scale(.92)}
+  .board{background:#fdf3fb;border-radius:20px;padding:12px;border:3px dashed #ffb6d5;margin-bottom:10px;min-height:180px;display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:8px}
+  .options{display:flex;flex-wrap:wrap;gap:10px;justify-content:center}
+  .btn-opt{font-family:inherit;font-size:24px;font-weight:bold;padding:14px 20px;border-radius:18px;border:3px solid #ff7eb3;background:#fff;color:#d63a8f;cursor:pointer;min-width:66px;min-height:66px;display:flex;align-items:center;justify-content:center}
+  .btn-opt:active{transform:scale(.94)}
+  .btn-opt.wrong{background:#ffd0d0;border-color:#ff5252;color:#c62828;animation:shake .4s}
+  .btn-opt.right{background:#d4ffd4;border-color:#4caf50;color:#2e7d32}
+  .btn-color{width:74px;height:74px;border-radius:20px;border:4px solid #fff;box-shadow:0 4px 10px rgba(0,0,0,.15);cursor:pointer;padding:0}
+  .btn-color.right{box-shadow:0 0 0 6px #4caf50}
+  .btn-color.wrong{box-shadow:0 0 0 6px #ff5252;animation:shake .4s}
+  @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
+  .feedback{text-align:center;font-size:18px;height:24px;margin-top:6px;color:#4caf50;font-weight:bold}
+  .item{animation:pop .35s ease}
+  @keyframes pop{0%{transform:scale(0)}80%{transform:scale(1.15)}100%{transform:scale(1)}}
+  .next-btn{display:block;margin:10px auto 0;padding:14px 30px;border:none;border-radius:24px;background:linear-gradient(135deg,#ffb6d5,#d63a8f);color:#fff;font-weight:bold;font-size:18px;font-family:inherit;cursor:pointer;box-shadow:0 6px 16px rgba(214,58,143,.4);min-height:52px}
+  .next-btn:active{transform:scale(.96)}
+  .memory-board{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:10px;background:#fdf3fb;border-radius:20px;border:3px dashed #ffb6d5}
+  .card{aspect-ratio:.85;border-radius:14px;background:linear-gradient(135deg,#ffd6e8,#e0c3fc);display:flex;align-items:center;justify-content:center;cursor:pointer;border:3px solid #ff7eb3;font-size:clamp(28px,8vw,40px);user-select:none;transition:.25s}
+  .card.flipped{background:#fff}.card.matched{background:#d4ffd4;border-color:#4caf50}.card.hidden-emoji{color:transparent}
+  .progress{text-align:center;font-size:14px;color:#8e24aa;margin-top:8px}
+  .mode-toggle{display:flex;gap:6px;justify-content:center;margin-bottom:10px}
+  .mode-btn{flex:1;max-width:130px;font-family:inherit;font-size:15px;font-weight:bold;padding:10px 6px;border-radius:16px;border:3px solid #ff7eb3;background:#fff;color:#d63a8f;cursor:pointer}
+  .mode-btn.active{background:linear-gradient(135deg,#ff7eb3,#d63a8f);color:#fff}
+  .alpha-card{background:linear-gradient(135deg,#ffe1f0,#f3e5ff);border-radius:28px;padding:16px;border:4px solid #ffb6d5;text-align:center;margin-bottom:12px;box-shadow:0 8px 24px rgba(214,58,143,.15)}
+  .alpha-letter{font-size:clamp(90px,30vw,160px);line-height:1;font-weight:900;color:#d63a8f;text-shadow:3px 3px 0 #fff,5px 5px 0 #ffd6e8;padding:8px 0;user-select:none}
+  .alpha-word{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap}
+  .alpha-emoji{font-size:54px;line-height:1}.alpha-text{font-size:24px;font-weight:bold;color:#6a1b9a}
+  .number-dots{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:10px}
+  .number-dots .dot{width:30px;height:30px}
+  .alpha-nav{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+  .nav-arrow{width:62px;height:62px;border-radius:50%;border:none;background:linear-gradient(135deg,#c084fc,#8e24aa);color:#fff;font-size:26px;cursor:pointer;box-shadow:0 5px 14px rgba(142,36,170,.35)}
+  .nav-arrow:active{transform:scale(.93)}
+  .alpha-progress{flex:1;text-align:center;font-weight:bold;color:#6a1b9a;font-size:18px}
+  .action-btn{width:100%;padding:14px;border-radius:22px;border:none;font-family:inherit;font-weight:bold;font-size:18px;cursor:pointer;color:#fff;background:linear-gradient(135deg,#ffb6d5,#d63a8f);box-shadow:0 6px 16px rgba(214,58,143,.35);min-height:54px}
+  .action-btn:active{transform:scale(.97)}
+  .action-btn.demo{grid-column:1/-1;background:linear-gradient(135deg,#ffd54f,#fb8c00);font-size:17px;padding:16px}
+  .char-picker{display:flex;gap:8px;overflow-x:auto;padding:6px 4px 12px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+  .char-picker::-webkit-scrollbar{display:none}
+  .char-btn{flex-shrink:0;width:52px;height:52px;border-radius:14px;border:3px solid #ffb6d5;background:#fff;color:#a02c6f;font-family:inherit;font-weight:bold;font-size:22px;cursor:pointer}
+  .char-btn.active{background:linear-gradient(135deg,#ff7eb3,#d63a8f);color:#fff;border-color:#d63a8f;transform:scale(1.06)}
+  .trace-wrap{width:100%;max-width:420px;margin:0 auto;aspect-ratio:1/1;position:relative;border-radius:24px;background:#fff;box-shadow:inset 0 0 0 4px #ffb6d5,0 8px 20px rgba(214,58,143,.15);overflow:hidden}
+  #trace-canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none;display:block}
+  .trace-progress-wrap{height:12px;background:#ffe1f0;border-radius:6px;margin:12px auto 8px;max-width:420px;overflow:hidden}
+  .trace-progress-bar{height:100%;width:0%;background:linear-gradient(90deg,#ff7eb3,#d63a8f);border-radius:6px;transition:width .2s}
+  .trace-hint{text-align:center;font-size:14px;color:#a02c6f;margin-bottom:10px;min-height:18px}
+  .trace-actions{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;max-width:420px;margin:0 auto}
+  .trace-actions .action-btn{padding:12px 4px;font-size:20px;min-width:0}
+
+  /* ============ СЧЁТ+/− ============ */
+  .as-eq{font-size:36px;font-weight:900;text-align:center;color:#d63a8f;padding:8px 10px;margin:6px 0 10px;background:linear-gradient(135deg,#ffe1f0,#f3e5ff);border-radius:20px;border:4px solid #ffb6d5;letter-spacing:3px;min-height:58px;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 14px rgba(214,58,143,.15)}
+  .as-eq .num{display:inline-block;min-width:36px}
+  .as-eq .sign{color:#8e24aa;margin:0 6px}
+  .as-board{min-height:130px;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:8px;padding:14px 10px;background:#fdf3fb;border-radius:20px;border:3px dashed #ffb6d5;margin-bottom:10px;position:relative;overflow:hidden}
+  .as-item{display:flex;flex-direction:column;align-items:center;transition:.35s;position:relative}
+  .as-item .count-label{font-size:16px;font-weight:bold;color:#fff;background:linear-gradient(135deg,#ff7eb3,#d63a8f);border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,.2);margin-top:3px;opacity:0;transform:scale(.4);transition:.3s}
+  .as-item.counted .count-label{opacity:1;transform:scale(1)}
+  .as-item.counted>svg{filter:drop-shadow(0 0 8px #ffd54f);transform:scale(1.15);transition:.25s}
+  .as-item.gone{opacity:0;transform:translateY(-60px) scale(.3) rotate(20deg);pointer-events:none}
+  .as-item.flying>svg{animation:flyAway 1s forwards}
+  @keyframes flyAway{
+    0%{transform:translateY(0) rotate(0)}
+    50%{transform:translateY(-40px) rotate(10deg);opacity:1}
+    100%{transform:translateY(-100px) rotate(25deg) scale(.3);opacity:0}
+  }
+  .as-sep{font-size:34px;font-weight:900;color:#d63a8f;padding:0 8px;align-self:center}
+  .as-hint{text-align:center;font-size:15px;color:#a02c6f;margin-bottom:10px;min-height:22px;font-weight:bold;transition:.2s}
+  .as-hint.active{color:#d63a8f;animation:pulse-hint 1s infinite}
+  @keyframes pulse-hint{0%,100%{opacity:1}50%{opacity:.6}}
+  .as-actions{display:grid;grid-template-columns:1fr;gap:8px;margin-top:6px}
+
+  /* ============ BOTTOM NAV ============ */
+  .bottom-nav{display:flex;background:#fff;border-top:3px solid #ffd6e8;padding:4px 2px calc(4px + env(safe-area-inset-bottom));gap:2px;flex-shrink:0;z-index:10}
+  .nav-btn{flex:1;border:none;background:transparent;padding:6px 1px;border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;font-family:inherit;transition:.2s;min-width:0;min-height:54px}
+  .nav-btn .ico{font-size:22px;line-height:1}
+  .nav-btn .lbl{font-size:9px;color:#a02c6f;font-weight:bold;margin-top:2px}
+  .nav-btn.active{background:linear-gradient(135deg,#ffe1f0,#ffd6e8)}
+  .nav-btn.active .ico{transform:scale(1.15)}
+  .nav-btn.active .lbl{color:#d63a8f}
+
+  /* ============ OVERLAY ============ */
+  #startOverlay{position:fixed;inset:0;background:linear-gradient(135deg,#ffd6e8,#e0c3fc,#c2e9fb);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;gap:16px;padding:20px;text-align:center;overflow-y:auto}
+  #startOverlay h2{color:#d63a8f;font-size:28px;text-shadow:2px 2px 0 #fff}
+  #startOverlay p{color:#6a1b9a;font-size:16px;max-width:340px}
+  #startBtn{font-family:inherit;font-size:26px;padding:20px 48px;border-radius:44px;border:none;background:linear-gradient(135deg,#ff7eb3,#d63a8f);color:#fff;font-weight:bold;cursor:pointer;box-shadow:0 10px 30px rgba(214,58,143,.5);min-height:72px}
+  #startOverlay.hide{display:none}
+  .diag-btn{font-family:inherit;font-size:14px;padding:10px 18px;border-radius:20px;border:2px solid #a02c6f;background:#fff;color:#a02c6f;cursor:pointer;font-weight:bold;min-height:44px}
+  .diag-panel{background:#fff;border-radius:16px;padding:14px 16px;max-width:400px;text-align:left;font-family:ui-monospace,monospace;font-size:13px;color:#333;box-shadow:0 6px 18px rgba(0,0,0,.15);display:none;line-height:1.5}
+  .diag-panel.show{display:block}
+  .diag-panel b{color:#d63a8f}.diag-panel .ok{color:#2e7d32}.diag-panel .bad{color:#c62828}
+  .diag-panel hr{border:none;border-top:1px dashed #ccc;margin:8px 0}
+  .test-voice-btn{font-family:inherit;padding:10px 14px;border-radius:12px;border:none;background:#4caf50;color:#fff;font-weight:bold;cursor:pointer;font-size:14px;margin-top:8px;width:100%;min-height:44px}
+</style>
+</head>
+<body>
+
+<div id="startOverlay">
+  <h2>🎀 Привет, принцесса! 🎀</h2>
+  <p>Нажми большую кнопку — и начнём играть со звуком!</p>
+  <button id="startBtn">▶️ НАЧАТЬ</button>
+  <button class="diag-btn" id="diagBtn">🔧 Проверить звук</button>
+  <div class="diag-panel" id="diagPanel">
+    <div><b>Диагностика голоса</b></div><hr>
+    <div>Поддержка речи: <span id="d-support">—</span></div>
+    <div>Голосов: <span id="d-count">—</span></div>
+    <div>Русских: <span id="d-ru">—</span></div>
+    <div>Выбран: <span id="d-picked">—</span></div><hr>
+    <div id="d-advice">—</div>
+    <button class="test-voice-btn" id="testVoiceBtn">🔊 Проверить («Раз, два, три»)</button>
+  </div>
+</div>
+
+<div class="app">
+  <div class="header">
+    <div class="stars" id="stars">⭐⭐⭐</div>
+    <button class="hint-btn" id="hintBtn" title="Повторить">🔊</button>
+  </div>
+
+  <div class="main-scroll">
+    <!-- СЧЁТ: посчитай -->
+    <div class="screen active" id="screen-math">
+      <div class="task-row"><button class="speak-btn" onclick="askMath()">🔊</button><div class="task-title" id="math-q">Посчитай</div></div>
+      <div class="board" id="math-board"></div>
+      <div class="options" id="math-options"></div>
+      <div class="feedback" id="math-fb"></div>
+      <button class="next-btn" onclick="newMath()">Ещё ▶</button>
+    </div>
+
+    <!-- СЧЁТ+: сложение и вычитание -->
+    <div class="screen" id="screen-addsub">
+      <div class="mode-toggle">
+        <button class="mode-btn active" data-as="add">➕ Сложение</button>
+        <button class="mode-btn" data-as="sub">➖ Вычитание</button>
+      </div>
+      <div class="as-eq" id="as-eq">3 + 2 = ?</div>
+      <div class="as-board" id="as-board"></div>
+      <div class="as-hint" id="as-hint">Нажми «Смотреть», чтобы я объяснила</div>
+      <div class="options" id="as-options"></div>
+      <div class="feedback" id="as-fb"></div>
+      <div class="as-actions">
+        <button class="action-btn demo" onclick="playAddSubDemo()">▶️ Как решать (покажи ещё раз)</button>
+        <button class="action-btn" onclick="newAddSub()">Ещё пример ➕</button>
+      </div>
+    </div>
+
+    <!-- АЗБУКА -->
+    <div class="screen" id="screen-alphabet">
+      <div class="mode-toggle">
+        <button class="mode-btn active" data-alpha="letters">🔤 Буквы</button>
+        <button class="mode-btn" data-alpha="numbers">🔢 Цифры</button>
+      </div>
+      <div class="alpha-card" id="alpha-card" onclick="speakAlpha()">
+        <div class="alpha-letter" id="alpha-letter">А</div>
+        <div class="alpha-word" id="alpha-word">
+          <div class="alpha-emoji" id="alpha-emoji">🍉</div>
+          <div class="alpha-text" id="alpha-text">Арбуз</div>
+        </div>
+        <div class="number-dots" id="number-dots"></div>
+      </div>
+      <div class="alpha-nav">
+        <button class="nav-arrow" onclick="alphaPrev()">◀</button>
+        <div class="alpha-progress" id="alpha-progress">1 / 33</div>
+        <button class="nav-arrow" onclick="alphaNext()">▶</button>
+      </div>
+      <button class="action-btn" onclick="speakAlpha()">🔊 Послушать</button>
+    </div>
+
+    <!-- ПРОПИСИ -->
+    <div class="screen" id="screen-write">
+      <div class="mode-toggle">
+        <button class="mode-btn active" data-write="numbers">🔢 Цифры</button>
+        <button class="mode-btn" data-write="letters">🔤 Буквы</button>
+        <button class="mode-btn" data-write="shapes">⬛ Фигуры</button>
+      </div>
+      <div class="char-picker" id="char-picker"></div>
+      <div class="trace-wrap"><canvas id="trace-canvas"></canvas></div>
+      <div class="trace-progress-wrap"><div class="trace-progress-bar" id="trace-progress-bar"></div></div>
+      <div class="trace-hint" id="trace-hint">Обведи пальчиком по контуру</div>
+      <div class="trace-actions">
+        <button class="action-btn demo" onclick="playDemo()">▶️ Как писать (покажи ещё раз)</button>
+        <button class="action-btn" onclick="traceSpeak()">🔊</button>
+        <button class="action-btn" onclick="traceClear()">🧹</button>
+        <button class="action-btn" onclick="traceNext()">⏭</button>
+        <button class="action-btn" onclick="tracePrev()">⏮</button>
+      </div>
+    </div>
+
+    <!-- ЦВЕТА -->
+    <div class="screen" id="screen-colors">
+      <div class="task-row"><button class="speak-btn" onclick="askColor()">🔊</button><div class="task-title">Какого цвета бантик?</div></div>
+      <div class="board" id="colors-board"></div>
+      <div class="options" id="colors-options"></div>
+      <div class="feedback" id="colors-fb"></div>
+      <button class="next-btn" onclick="newColor()">Ещё ▶</button>
+    </div>
+
+    <!-- ЛОГИКА -->
+    <div class="screen" id="screen-logic">
+      <div class="task-row"><button class="speak-btn" onclick="askLogic()">🔊</button><div class="task-title">Найди лишнее</div></div>
+      <div class="board" id="logic-board"></div>
+      <div class="feedback" id="logic-fb"></div>
+      <button class="next-btn" onclick="newLogic()">Ещё ▶</button>
+    </div>
+
+    <!-- ПАМЯТЬ -->
+    <div class="screen" id="screen-memory">
+      <div class="task-row"><button class="speak-btn" onclick="speak('Найди пару. Открывай карточки и ищи одинаковые картинки.')">🔊</button><div class="task-title">Найди пару 🃏</div></div>
+      <div class="memory-board" id="memory-board"></div>
+      <div class="feedback" id="memory-fb"></div>
+      <div class="progress" id="memory-progress">Найдено пар: 0 / 6</div>
+      <button class="next-btn" onclick="initMemory()">Заново 🔄</button>
+    </div>
+  </div>
+
+  <nav class="bottom-nav" id="bottomNav">
+    <button class="nav-btn active" data-tab="math"><span class="ico">🔢</span><span class="lbl">Посчитай</span></button>
+    <button class="nav-btn" data-tab="addsub"><span class="ico">➕➖</span><span class="lbl">Решаем</span></button>
+    <button class="nav-btn" data-tab="alphabet"><span class="ico">🔤</span><span class="lbl">Азбука</span></button>
+    <button class="nav-btn" data-tab="write"><span class="ico">✍️</span><span class="lbl">Прописи</span></button>
+    <button class="nav-btn" data-tab="colors"><span class="ico">🎨</span><span class="lbl">Цвета</span></button>
+    <button class="nav-btn" data-tab="memory"><span class="ico">🃏</span><span class="lbl">Память</span></button>
+  </nav>
+</div>
+
+<script>
+/* ==================== ГОЛОС ==================== */
+const TTS = {
+  supported: 'speechSynthesis' in window,
+  voices: [], ruVoice: null,
+  init() {
+    if (!this.supported) return;
+    const load = () => {
+      const v = speechSynthesis.getVoices();
+      if (v && v.length) {
+        this.voices = v;
+        this.ruVoice = v.find(x => /^ru/i.test(x.lang) && /female|женск|milena|alena|google рус/i.test(x.name)) || v.find(x => /^ru/i.test(x.lang)) || null;
+        this.updateDiag();
+      }
+    };
+    load();
+    if ('onvoiceschanged' in speechSynthesis) speechSynthesis.onvoiceschanged = load;
+    [100,300,700,1500,2500].forEach(t => setTimeout(load, t));
+  },
+  speak(text, opts = {}) {
+    if (!this.supported || !text) return;
+    if (!opts.queue) { try { speechSynthesis.cancel(); } catch(e) {} }
+    setTimeout(() => {
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = 'ru-RU';
+      u.rate = opts.rate ?? 0.9;
+      u.pitch = opts.pitch ?? 1.2;
+      u.volume = 1;
+      if (this.ruVoice) u.voice = this.ruVoice;
+      speechSynthesis.speak(u);
+    }, opts.queue ? 0 : 60);
+  },
+  updateDiag() {
+    const $ = id => document.getElementById(id);
+    if (!$('d-support')) return;
+    $('d-support').innerHTML = this.supported ? '<span class="ok">✅ есть</span>' : '<span class="bad">❌ нет</span>';
+    $('d-count').textContent = this.voices.length;
+    const ru = this.voices.filter(v => /^ru/i.test(v.lang)).map(v => v.name);
+    $('d-ru').innerHTML = ru.length ? `<span class="ok">✅ ${ru.length}</span>` : '<span class="bad">❌ 0</span>';
+    $('d-picked').innerHTML = this.ruVoice ? `<span class="ok">✅ ${this.ruVoice.name}</span>` : '<span class="bad">❌ не выбран</span>';
+    $('d-advice').innerHTML = !this.supported ? 'Откройте в Chrome / Edge / Safari.' :
+      (!ru.length ? 'Установите русский голос в настройках системы.' : '<span class="ok">Всё готово!</span>');
+  }
+};
+TTS.init();
+const speak = (t, r, p) => TTS.speak(t, { rate: r, pitch: p });
+const speakQueue = (t, r, p) => TTS.speak(t, { rate: r, pitch: p, queue: true });
+
+/* ==================== ЖИВАЯ ОЗВУЧКА ==================== */
+const PRAISE = [
+  'Молодец! Правильно!', 'Умница! Как здорово!', 'Супер! Ты справилась!',
+  'Ух ты! Всё верно!', 'Отлично! Ты умница!', 'Вау! Правильно!',
+  'Здорово! Так держать!', 'Прекрасно! Продолжай!'
+];
+const ENCOURAGE = [
+  'Попробуй ещё разок', 'Почти получилось!', 'Давай ещё раз',
+  'Не угадала. Попробуй снова', 'Подумай немножко'
+];
+const HELLO = [
+  'Привет, принцесса! Давай играть!',
+  'Привет! Я так рада тебя видеть!',
+  'Здравствуй! Начинаем играть!'
+];
+const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+const praise = () => pick(PRAISE);
+const encourage = () => pick(ENCOURAGE);
+
+/* Голос с «живой» вариацией интонации */
+function speakLively(text, opts = {}) {
+  const rate = opts.rate ?? (0.85 + Math.random() * 0.12);
+  const pitch = opts.pitch ?? (1.15 + Math.random() * 0.22);
+  speak(text, rate, pitch);
+}
+function speakLivelyQueue(text) {
+  const rate = 0.9 + Math.random() * 0.1;
+  const pitch = 1.15 + Math.random() * 0.25;
+  speakQueue(text, rate, pitch);
+}
+/* С восклицанием */
+function speakCheer(text) {
+  speak(text, 0.95, 1.5);
+}
+function speakCheerQueue(text) {
+  speakQueue(text, 0.95, 1.5);
+}
+
+/* ==================== ЗВУКИ ==================== */
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+let actx = null;
+function beep(f, dur = 0.15, type = 'sine') {
+  try {
+    if (!actx) actx = new AudioCtx();
+    if (actx.state === 'suspended') actx.resume();
+    const o = actx.createOscillator(), g = actx.createGain();
+    o.type = type; o.frequency.value = f;
+    o.connect(g); g.connect(actx.destination);
+    g.gain.setValueAtTime(0.12, actx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, actx.currentTime + dur);
+    o.start(); o.stop(actx.currentTime + dur);
+  } catch(e) {}
+}
+const soundRight = () => { beep(660, .1); setTimeout(() => beep(880, .12), 100); setTimeout(() => beep(1100, .15), 220); };
+const soundWrong = () => beep(220, .22, 'square');
+const soundClick = () => beep(520, 0.06);
+const soundPop = () => beep(700 + Math.random() * 200, 0.05);
+const vib = (ms = 20) => { try { navigator.vibrate?.(ms); } catch(e) {} };
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+/* ==================== ЗВЁЗДОЧКИ ==================== */
+let starCount = 3;
+function addStar() {
+  if (starCount < 50) starCount++;
+  document.getElementById('stars').textContent = '⭐'.repeat(starCount);
+}
+
+/* ==================== SVG-РИСУНКИ ==================== */
+const svgFlower = (c='#ff7eb3', s=56) => `<svg width="${s}" height="${s}" viewBox="0 0 60 60"><g transform="translate(30,30)">${[0,72,144,216,288].map(a=>`<ellipse cx="0" cy="-15" rx="9" ry="13" fill="${c}" transform="rotate(${a})"/>`).join('')}<circle r="7" fill="#ffe082"/></g></svg>`;
+const svgHeart = (c='#ff4d7e', s=56) => `<svg width="${s}" height="${s}" viewBox="0 0 60 60"><path d="M30 52 C 5 35, 5 12, 30 20 C 55 12, 55 35, 30 52 Z" fill="${c}"/></svg>`;
+const svgStar = (c='#ffd54f', s=56) => `<svg width="${s}" height="${s}" viewBox="0 0 60 60"><polygon points="30,4 36,22 55,22 40,34 46,53 30,41 14,53 20,34 5,22 24,22" fill="${c}"/></svg>`;
+const svgButterfly = (c1='#c084fc', c2='#f472b6', s=56) => `<svg width="${s}" height="${s}" viewBox="0 0 60 60"><ellipse cx="20" cy="22" rx="14" ry="11" fill="${c1}"/><ellipse cx="40" cy="22" rx="14" ry="11" fill="${c1}"/><ellipse cx="22" cy="40" rx="10" ry="8" fill="${c2}"/><ellipse cx="38" cy="40" rx="10" ry="8" fill="${c2}"/><ellipse cx="30" cy="30" rx="3" ry="14" fill="#4a148c"/><circle cx="30" cy="17" r="4" fill="#4a148c"/></svg>`;
+const svgBalloon = (c='#ff4d7e', s=56) => `<svg width="${s}" height="${s}" viewBox="0 0 60 60"><ellipse cx="30" cy="22" rx="14" ry="17" fill="${c}"/><polygon points="26,38 34,38 30,44" fill="${c}"/><path d="M30 44 Q 33 50 30 56" stroke="#666" fill="none" stroke-width="1.5"/></svg>`;
+const svgBow = (c='#ff7eb3', s=56) => `<svg width="${s}" height="${s}" viewBox="0 0 60 60"><path d="M30 30 L12 18 Q 6 30 12 42 Z" fill="${c}"/><path d="M30 30 L48 18 Q 54 30 48 42 Z" fill="${c}"/><circle cx="30" cy="30" r="6" fill="#fff3" stroke="${c}" stroke-width="2"/></svg>`;
+const svgCupcake = (s=56) => `<svg width="${s}" height="${s}" viewBox="0 0 60 60"><path d="M15 30 L45 30 L40 54 L20 54 Z" fill="#d7a86e"/><ellipse cx="30" cy="30" rx="16" ry="8" fill="#ffb6d5"/><circle cx="30" cy="22" r="8" fill="#fff3e0"/><circle cx="30" cy="15" r="3" fill="#e91e63"/></svg>`;
+const svgSun = (s=56) => `<svg width="${s}" height="${s}" viewBox="0 0 60 60">${[0,45,90,135,180,225,270,315].map(a=>`<rect x="29" y="2" width="2" height="10" fill="#ffb300" transform="rotate(${a} 30 30)"/>`).join('')}<circle cx="30" cy="30" r="14" fill="#ffd54f"/><circle cx="25" cy="28" r="2" fill="#333"/><circle cx="35" cy="28" r="2" fill="#333"/><path d="M25 35 Q 30 39 35 35" stroke="#333" fill="none" stroke-width="1.5"/></svg>`;
+const svgCat = (s=56) => `<svg width="${s}" height="${s}" viewBox="0 0 60 60"><ellipse cx="30" cy="35" rx="18" ry="16" fill="#ffcc80"/><polygon points="14,25 18,10 26,20" fill="#ffcc80"/><polygon points="46,25 42,10 34,20" fill="#ffcc80"/><circle cx="24" cy="34" r="2.5" fill="#333"/><circle cx="36" cy="34" r="2.5" fill="#333"/><path d="M30 38 L27 41 L33 41 Z" fill="#e91e63"/><path d="M26 43 Q 30 46 34 43" stroke="#333" fill="none" stroke-width="1.5"/></svg>`;
+const svgApple = (c='#e53935', s=52) => `<svg width="${s}" height="${s}" viewBox="0 0 60 60"><circle cx="30" cy="34" r="18" fill="${c}"/><path d="M30 16 Q 32 8 38 6" stroke="#4caf50" stroke-width="2.5" fill="none" stroke-linecap="round"/><ellipse cx="38" cy="14" rx="5" ry="3" fill="#66bb6a" transform="rotate(-25 38 14)"/><ellipse cx="24" cy="30" rx="3" ry="2" fill="#fff" opacity=".45"/></svg>`;
+const svgOrange = (s=52) => `<svg width="${s}" height="${s}" viewBox="0 0 60 60"><circle cx="30" cy="34" r="18" fill="#fb8c00"/><path d="M30 16 Q 32 8 38 6" stroke="#4caf50" stroke-width="2.5" fill="none" stroke-linecap="round"/><ellipse cx="38" cy="14" rx="5" ry="3" fill="#66bb6a" transform="rotate(-25 38 14)"/><ellipse cx="24" cy="30" rx="3" ry="2" fill="#fff" opacity=".45"/></svg>`;
+const svgBerry = (c='#ec407a', s=52) => `<svg width="${s}" height="${s}" viewBox="0 0 60 60"><circle cx="30" cy="38" r="14" fill="${c}"/><circle cx="22" cy="30" r="8" fill="${c}"/><circle cx="38" cy="30" r="8" fill="${c}"/><path d="M30 18 L28 10 L32 10 Z" fill="#4caf50"/><circle cx="26" cy="32" r="1.5" fill="#fff"/><circle cx="34" cy="32" r="1.5" fill="#fff"/><circle cx="30" cy="40" r="1.5" fill="#fff"/></svg>`;
+
+/* ==================== ЧИСЛА СЛОВАМИ ==================== */
+const NUM_WORDS = ['ноль','один','два','три','четыре','пять','шесть','семь','восемь','девять','десять'];
+const numWord = n => NUM_WORDS[n] || String(n);
+const itemPlural = (n, name) => {
+  // name: 'яблоко' или 'звёздочка' и т.п. Простое правило по последней цифре
+  const last = n % 10;
+  const twoLast = n % 100;
+  if (name === 'звёздочка') {
+    if (last === 1 && twoLast !== 11) return 'звёздочка';
+    if (last >= 2 && last <= 4 && (twoLast < 10 || twoLast >= 20)) return 'звёздочки';
+    return 'звёздочек';
+  }
+  if (name === 'цветочек') {
+    if (last === 1 && twoLast !== 11) return 'цветочек';
+    if (last >= 2 && last <= 4 && (twoLast < 10 || twoLast >= 20)) return 'цветочка';
+    return 'цветочков';
+  }
+  if (name === 'яблоко') {
+    if (last === 1 && twoLast !== 11) return 'яблоко';
+    if (last >= 2 && last <= 4 && (twoLast < 10 || twoLast >= 20)) return 'яблока';
+    return 'яблок';
+  }
+  if (name === 'шарик') {
+    if (last === 1 && twoLast !== 11) return 'шарик';
+    if (last >= 2 && last <= 4 && (twoLast < 10 || twoLast >= 20)) return 'шарика';
+    return 'шариков';
+  }
+  if (name === 'бабочка') {
+    if (last === 1 && twoLast !== 11) return 'бабочка';
+    if (last >= 2 && last <= 4 && (twoLast < 10 || twoLast >= 20)) return 'бабочки';
+    return 'бабочек';
+  }
+  return name;
+};
+
+/* ==================== ПРОСТОЙ СЧЁТ ==================== */
+let currentMath = null;
+const flowerColors = ['#ff7eb3','#ba68c8','#64b5f6','#ffb74d','#81c784'];
+function newMath() {
+  const emoji = Math.floor(Math.random() * 4);
+  const count = 2 + Math.floor(Math.random() * 7);
+  const board = document.getElementById('math-board');
+  const opts = document.getElementById('math-options');
+  document.getElementById('math-fb').textContent = '';
+  opts.innerHTML = ''; board.innerHTML = '';
+  let wordGen, wordNom;
+  if (emoji === 0) { wordGen = 'цветочков'; wordNom = 'цветочек'; }
+  else if (emoji === 1) { wordGen = 'сердечек'; wordNom = 'сердечко'; }
+  else if (emoji === 2) { wordGen = 'звёздочек'; wordNom = 'звёздочка'; }
+  else { wordGen = 'бабочек'; wordNom = 'бабочка'; }
+  currentMath = { count, wordGen, wordNom };
+  for (let i = 0; i < count; i++) {
+    const div = document.createElement('div');
+    div.className = 'item';
+    if (emoji === 0) div.innerHTML = svgFlower(flowerColors[i % 5]);
+    else if (emoji === 1) div.innerHTML = svgHeart(['#ff4d7e','#ec407a','#f06292'][i % 3]);
+    else if (emoji === 2) div.innerHTML = svgStar(['#ffd54f','#ffb300','#ffca28'][i % 3]);
+    else div.innerHTML = svgButterfly(['#c084fc','#f472b6','#60a5fa'][i % 3]);
+    board.appendChild(div);
+  }
+  document.getElementById('math-q').textContent = `Сколько ${wordGen}?`;
+  const answers = new Set([count]);
+  while (answers.size < 4) answers.add(Math.max(1, count + Math.floor(Math.random() * 7) - 3));
+  [...answers].sort(() => Math.random() - .5).forEach(n => {
+    const b = document.createElement('button');
+    b.className = 'btn-opt'; b.textContent = n;
+    b.onclick = () => { soundClick(); speak(String(n), 1.0, 1.3); checkMath(b, n, count); };
+    opts.appendChild(b);
+  });
+  setTimeout(askMath, 350);
+}
+function askMath() {
+  if (currentMath) speakLively(`Посчитай, сколько ${currentMath.wordGen}? Обведи глазками и скажи.`);
+}
+function checkMath(btn, val, correct) {
+  const fb = document.getElementById('math-fb');
+  if (val === correct) {
+    btn.classList.add('right');
+    fb.textContent = 'Молодец! 🌸'; fb.style.color = '#4caf50';
+    soundRight(); vib(40); addStar();
+    setTimeout(() => speakCheer(praise()), 300);
+    document.querySelectorAll('#math-options .btn-opt').forEach(b => b.disabled = true);
+  } else {
+    btn.classList.add('wrong');
+    fb.textContent = 'Попробуй ещё 💗'; fb.style.color = '#e91e63';
+    soundWrong(); vib(80);
+    setTimeout(() => speakLively(encourage()), 300);
+  }
+}
+
+/* ================================================================
+   РЕШАЕМ — сложение и вычитание с объяснением
+   ================================================================ */
+let asMode = 'add';
+let asState = null;
+let asAnimating = false;
+
+document.querySelectorAll('[data-as]').forEach(b => {
+  b.onclick = () => {
+    document.querySelectorAll('[data-as]').forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    asMode = b.dataset.as;
+    soundClick();
+    newAddSub();
+  };
+});
+
+const ITEM_TYPES = [
+  { emoji:'apple',   svg: (c) => svgApple(c),  name: 'яблоко',  colors: ['#e53935','#43a047','#fdd835'] },
+  { emoji:'orange',  svg: (c) => svgOrange(),  name: 'апельсин', colors: ['#fb8c00'] },
+  { emoji:'berry',   svg: (c) => svgBerry(c),  name: 'ягодка',  colors: ['#ec407a','#8e24aa','#e53935'] },
+  { emoji:'flower',  svg: (c) => svgFlower(c), name: 'цветочек', colors: ['#ff7eb3','#ba68c8','#64b5f6'] },
+  { emoji:'star',    svg: (c) => svgStar(c),   name: 'звёздочка', colors: ['#ffd54f','#ffb300','#ffca28'] }
+];
+
+function newAddSub() {
+  if (asAnimating) return;
+  const type = pick(ITEM_TYPES);
+
+  let a, b, result, sign;
+  if (asMode === 'add') {
+    a = 1 + Math.floor(Math.random() * 4); // 1..4
+    b = 1 + Math.floor(Math.random() * 4);
+    // не более 9
+    if (a + b > 9) b = Math.max(1, 9 - a);
+    result = a + b;
+    sign = '+';
+  } else {
+    // Вычитание: a > b, результат >= 1
+    a = 3 + Math.floor(Math.random() * 6); // 3..8
+    b = 1 + Math.floor(Math.random() * (a - 1));
+    if (a - b < 1) b = a - 1;
+    result = a - b;
+    sign = '−';
+  }
+
+  asState = { a, b, result, sign, type, finished: false };
+
+  // Показать уравнение
+  document.getElementById('as-eq').innerHTML =
+    `<span class="num">${a}</span><span class="sign">${sign}</span><span class="num">${b}</span><span class="sign">=</span><span class="num" id="as-result">?</span>`;
+
+  // Нарисовать исходную картинку
+  renderASBoard(asState, false);
+
+  // Ответы
+  const opts = document.getElementById('as-options');
+  opts.innerHTML = '';
+  const answers = new Set([result]);
+  while (answers.size < 4) {
+    let v = Math.max(1, result + Math.floor(Math.random() * 5) - 2);
+    answers.add(v);
+  }
+  [...answers].sort(() => Math.random() - .5).forEach(n => {
+    const btn = document.createElement('button');
+    btn.className = 'btn-opt';
+    btn.textContent = n;
+    btn.onclick = () => { soundClick(); speak(String(n), 1.0, 1.3); checkAddSub(btn, n, result); };
+    opts.appendChild(btn);
+  });
+
+  document.getElementById('as-fb').textContent = '';
+  const hint = document.getElementById('as-hint');
+  hint.classList.remove('active');
+  hint.textContent = 'Нажми «Как решать», чтобы я объяснила';
+  setTimeout(() => {
+    if (asMode === 'add') speakLively(`Давай сложим. ${a} плюс ${b}. Нажми кнопку — покажу, как решать.`);
+    else speakLively(`Давай вычтем. ${a} минус ${b}. Нажми кнопку — покажу, как решать.`);
+  }, 350);
+}
+
+function renderASBoard(state, withLabels) {
+  const board = document.getElementById('as-board');
+  board.innerHTML = '';
+  const color = () => pick(state.type.colors);
+  // Сложение: сначала a предметов, потом + и b предметов
+  if (state.sign === '+') {
+    for (let i = 0; i < state.a; i++) {
+      const d = document.createElement('div');
+      d.className = 'as-item';
+      d.dataset.idx = i;
+      d.innerHTML = state.type.svg(color()) + `<div class="count-label">${i+1}</div>`;
+      board.appendChild(d);
+    }
+    const sep = document.createElement('div');
+    sep.className = 'as-sep';
+    sep.textContent = '+';
+    sep.dataset.role = 'sep';
+    board.appendChild(sep);
+    for (let i = 0; i < state.b; i++) {
+      const d = document.createElement('div');
+      d.className = 'as-item';
+      d.dataset.idx = state.a + i;
+      d.innerHTML = state.type.svg(color()) + `<div class="count-label">${state.a + i + 1}</div>`;
+      board.appendChild(d);
+    }
+  } else {
+    // Вычитание: все a предметов, но b последних «улетят»
+    for (let i = 0; i < state.a; i++) {
+      const d = document.createElement('div');
+      d.className = 'as-item';
+      d.dataset.idx = i;
+      d.innerHTML = state.type.svg(color()) + `<div class="count-label">${i+1}</div>`;
+      if (i >= state.a - state.b) d.dataset.removable = '1';
+      board.appendChild(d);
+    }
+  }
+}
+
+async function playAddSubDemo() {
+  if (asAnimating || !asState) return;
+  asAnimating = true;
+
+  const board = document.getElementById('as-board');
+  const hint = document.getElementById('as-hint');
+  const st = asState;
+  const items = [...board.querySelectorAll('.as-item')];
+  items.forEach(it => it.classList.remove('counted', 'gone', 'flying'));
+
+  hint.classList.add('active');
+  hint.textContent = 'Смотри внимательно 👀';
+
+  // 1) Назвать первое число
+  if (st.sign === '+') {
+    hint.textContent = `${st.a} ${itemPlural(st.a, st.type.name)}`;
+    speakLively(`${st.a} ${itemPlural(st.a, st.type.name)}. Смотри!`);
+    await sleep(900);
+
+    // Подсветить первую группу
+    const firstGroup = items.slice(0, st.a);
+    for (let i = 0; i < firstGroup.length; i++) {
+      firstGroup[i].classList.add('counted');
+      soundPop();
+      await sleep(280);
+    }
+    speakCheerQueue('Отлично!');
+
+    await sleep(400);
+    hint.textContent = `Добавляем ${st.b}`;
+    speakLively(`Добавляем ${st.b} ${itemPlural(st.b, st.type.name)}.`);
+    await sleep(900);
+
+    // Подсветить вторую группу
+    const secondGroup = items.slice(st.a);
+    for (let i = 0; i < secondGroup.length; i++) {
+      secondGroup[i].classList.add('counted');
+      soundPop();
+      await sleep(280);
+    }
+    speakCheerQueue('Вот как!');
+
+    await sleep(500);
+    hint.textContent = `Считаем всё вместе!`;
+    speakLively('А теперь считаем всё вместе!', { rate: 0.95, pitch: 1.4 });
+
+    // Сбросить счётчики и заново посчитать с 1 до результата
+    items.forEach(it => it.classList.remove('counted'));
+    await sleep(300);
+
+    for (let i = 0; i < items.length; i++) {
+      items[i].classList.add('counted');
+      items[i].querySelector('.count-label').textContent = (i + 1);
+      soundPop();
+      speakCheerQueue(numWord(i + 1));
+      await sleep(520);
+    }
+
+    await sleep(500);
+    hint.textContent = `Получилось ${st.result}!`;
+    speakLively(`${st.a} плюс ${st.b} равно ${st.result}. Скажи вместе со мной: ${numWord(st.result)}!`, { rate: 0.9, pitch: 1.35 });
+    hint.classList.remove('active');
+
+  } else {
+    // Вычитание
+    hint.textContent = `${st.a} ${itemPlural(st.a, st.type.name)}`;
+    speakLively(`${st.a} ${itemPlural(st.a, st.type.name)}. Смотри!`);
+    await sleep(900);
+
+    for (let i = 0; i < items.length; i++) {
+      items[i].classList.add('counted');
+      soundPop();
+      speakCheerQueue(numWord(i + 1));
+      await sleep(520);
+    }
+
+    await sleep(400);
+    hint.textContent = `${st.b} ${itemPlural(st.b, st.type.name)} улетает`;
+    speakLively(`${st.b} ${itemPlural(st.b, st.type.name)} ${st.b === 1 ? 'улетает' : 'улетают'}. Ух ты!`, { rate: 0.95, pitch: 1.35 });
+    await sleep(700);
+
+    const removable = items.filter(it => it.dataset.removable === '1');
+    for (const it of removable) {
+      it.classList.add('flying');
+      soundPop();
+      await sleep(350);
+      it.classList.add('gone');
+      await sleep(200);
+    }
+    speakCheerQueue('Улетели!');
+
+    await sleep(600);
+    hint.textContent = `Считаем оставшиеся!`;
+    speakLively('Считаем, сколько осталось!', { rate: 0.95, pitch: 1.4 });
+
+    const remaining = items.filter(it => it.dataset.removable !== '1');
+    remaining.forEach(it => {
+      it.classList.remove('counted');
+      // Сбросить номера
+    });
+    await sleep(300);
+
+    for (let i = 0; i < remaining.length; i++) {
+      remaining[i].classList.add('counted');
+      remaining[i].querySelector('.count-label').textContent = (i + 1);
+      soundPop();
+      speakCheerQueue(numWord(i + 1));
+      await sleep(520);
+    }
+
+    await sleep(500);
+    hint.textContent = `Осталось ${st.result}!`;
+    speakLively(`${st.a} минус ${st.b} равно ${st.result}. Осталось ${st.result}!`, { rate: 0.9, pitch: 1.35 });
+    hint.classList.remove('active');
+  }
+
+  asAnimating = false;
+}
+
+function checkAddSub(btn, val, correct) {
+  if (asAnimating || !asState) return;
+  const fb = document.getElementById('as-fb');
+  if (val === correct) {
+    btn.classList.add('right');
+    fb.textContent = 'Правильно! 🌟'; fb.style.color = '#4caf50';
+    soundRight(); vib(50); addStar();
+    // Показать результат в уравнении
+    const rEl = document.getElementById('as-result');
+    if (rEl) rEl.textContent = correct;
+    setTimeout(() => speakCheer(praise() + ' ' + correct + '!'), 300);
+    document.querySelectorAll('#as-options .btn-opt').forEach(b => b.disabled = true);
+    // Автопоказать объяснение через паузу
+    setTimeout(() => { if (!asAnimating) playAddSubDemo(); }, 1600);
+  } else {
+    btn.classList.add('wrong');
+    fb.textContent = 'Не совсем 🤔'; fb.style.color = '#e91e63';
+    soundWrong(); vib(80);
+    setTimeout(() => speakLively(encourage()), 300);
+  }
+}
+
+/* ==================== ПРОПИСИ (без изменений) ==================== */
+const STROKE_DATA = {
+  numbers: {
+    '0': { word: 'ноль', strokes: ['M 50,10 C 25,10 20,35 20,50 C 20,65 25,90 50,90 C 75,90 80,65 80,50 C 80,35 75,10 50,10'] },
+    '1': { word: 'один', strokes: ['M 30,25 L 50,10', 'M 50,10 L 50,90'] },
+    '2': { word: 'два', strokes: ['M 20,30 C 20,10 80,10 80,35 C 80,55 20,75 20,90 L 82,90'] },
+    '3': { word: 'три', strokes: ['M 20,20 C 40,5 80,15 75,35 C 72,48 55,50 50,50 C 60,50 80,55 78,72 C 75,90 40,95 20,80'] },
+    '4': { word: 'четыре', strokes: ['M 70,10 L 20,60 L 85,60', 'M 70,60 L 70,90'] },
+    '5': { word: 'пять', strokes: ['M 78,10 L 28,10 L 26,45 C 45,35 85,45 83,65 C 80,88 45,90 22,85'] },
+    '6': { word: 'шесть', strokes: ['M 70,15 C 40,20 20,50 22,72 C 25,92 78,92 78,68 C 78,50 50,48 30,60'] },
+    '7': { word: 'семь', strokes: ['M 20,10 L 80,10 L 40,90'] },
+    '8': { word: 'восемь', strokes: ['M 50,50 C 25,45 25,15 50,15 C 75,15 75,45 50,50 C 20,55 20,90 50,90 C 80,90 80,55 50,50'] },
+    '9': { word: 'девять', strokes: ['M 80,40 C 80,15 30,10 25,35 C 20,60 70,65 80,40', 'M 80,40 L 72,90'] }
+  },
+  letters: {
+    'А':['M 15,90 L 50,10 L 85,90','M 28,55 L 72,55'],
+    'Б':['M 30,10 L 30,90','M 30,10 L 70,10','M 30,50 L 55,50 C 82,50 82,90 55,90 L 30,90'],
+    'В':['M 30,10 L 30,90','M 30,10 L 60,10 C 80,10 80,48 60,48 L 30,48','M 30,48 L 60,48 C 82,48 82,90 60,90 L 30,90'],
+    'Г':['M 30,10 L 30,90','M 30,10 L 75,10'],
+    'Д':['M 30,20 L 30,70 L 70,70 L 70,20','M 20,70 L 18,90 L 82,90 L 80,70','M 12,90 L 88,90'],
+    'Е':['M 75,10 L 30,10 L 30,90 L 75,90','M 30,50 L 65,50'],
+    'Ж':['M 25,10 L 25,90','M 75,10 L 75,90','M 20,40 L 25,50 L 20,60','M 80,40 L 75,50 L 80,60','M 25,50 L 75,50'],
+    'З':['M 20,20 C 40,5 80,15 75,35 C 72,48 55,50 50,50 C 60,50 80,55 78,72 C 75,90 40,95 20,80'],
+    'И':['M 25,10 L 25,90','M 75,90 L 75,10','M 25,90 L 75,10'],
+    'Й':['M 25,10 L 25,90','M 75,10 L 75,90','M 25,90 L 75,10','M 35,4 Q 50,0 65,4'],
+    'К':['M 30,10 L 30,90','M 75,10 L 30,55','M 45,42 L 78,90'],
+    'Л':['M 30,10 L 30,90','M 30,10 L 78,10 L 82,90'],
+    'М':['M 20,90 L 20,10 L 50,60 L 80,10 L 80,90'],
+    'Н':['M 25,10 L 25,90','M 75,10 L 75,90','M 25,50 L 75,50'],
+    'О':['M 50,10 C 20,10 15,30 15,50 C 15,70 20,90 50,90 C 80,90 85,70 85,50 C 85,30 80,10 50,10'],
+    'П':['M 25,90 L 25,10 L 75,10 L 75,90'],
+    'Р':['M 30,10 L 30,90','M 30,10 L 60,10 C 82,10 82,48 60,48 L 30,48'],
+    'С':['M 80,25 C 65,10 25,10 20,50 C 18,85 60,95 80,75'],
+    'Т':['M 20,10 L 80,10','M 50,10 L 50,90'],
+    'У':['M 20,10 L 55,55 L 80,10','M 55,55 L 35,90'],
+    'Ф':['M 50,10 L 50,90','M 50,25 C 22,25 22,75 50,75 C 78,75 78,25 50,25'],
+    'Х':['M 20,10 L 80,90','M 80,10 L 20,90'],
+    'Ц':['M 22,10 L 22,88 L 78,88 L 78,10','M 78,88 L 88,98'],
+    'Ч':['M 22,10 L 22,50 C 22,72 60,72 78,52','M 78,10 L 78,90'],
+    'Ш':['M 20,10 L 20,90','M 50,10 L 50,90','M 80,10 L 80,90','M 20,90 L 80,90'],
+    'Щ':['M 18,10 L 18,88','M 46,10 L 46,88','M 74,10 L 74,88','M 18,88 L 82,88','M 82,88 L 92,98'],
+    'Ъ':['M 15,10 L 15,50 L 30,50','M 30,10 L 30,90','M 30,10 L 60,10 C 85,10 85,50 60,50 L 30,50'],
+    'Ы':['M 25,10 L 25,90','M 25,10 L 50,10 C 72,10 72,50 50,50 L 25,50','M 78,10 L 78,90'],
+    'Ь':['M 30,10 L 30,90','M 30,10 L 55,10 C 78,10 78,50 55,50 L 30,50'],
+    'Э':['M 20,25 C 35,10 78,10 80,50 C 82,88 40,95 20,75','M 40,50 L 75,50'],
+    'Ю':['M 25,10 L 25,90','M 25,50 L 50,50','M 60,10 C 40,10 40,90 60,90 C 80,90 80,10 60,10'],
+    'Я':['M 80,10 L 80,90','M 80,10 L 55,10 C 30,10 30,48 55,48 L 80,48','M 55,48 L 30,90']
+  },
+  shapes: {
+    'line':{name:'Прямая линия',strokes:['M 15,50 L 85,50']},
+    'circle':{name:'Круг',strokes:['M 50,10 A 40,40 0 1 1 50,90 A 40,40 0 1 1 50,10']},
+    'oval':{name:'Овал',strokes:['M 50,15 A 30,35 0 1 1 50,85 A 30,35 0 1 1 50,15']},
+    'square':{name:'Квадрат',strokes:['M 20,20 L 80,20 L 80,80 L 20,80 Z']},
+    'rect':{name:'Прямоугольник',strokes:['M 15,25 L 85,25 L 85,75 L 15,75 Z']},
+    'triangle':{name:'Треугольник',strokes:['M 50,15 L 85,80 L 15,80 Z']},
+    'diamond':{name:'Ромб',strokes:['M 50,10 L 85,50 L 50,90 L 15,50 Z']},
+    'star':{name:'Звёздочка',strokes:['M 50,10 L 59,37 L 88,38 L 65,55 L 73,82 L 50,66 L 27,82 L 35,55 L 12,38 L 41,37 Z']},
+    'heart':{name:'Сердечко',strokes:['M 50,88 C 18,60 12,35 30,24 C 42,17 50,28 50,35 C 50,28 58,17 70,24 C 88,35 82,60 50,88 Z']},
+    'arrow':{name:'Стрелка',strokes:['M 15,50 L 80,50','M 60,30 L 80,50 L 60,70']}
+  }
+};
+const SHAPE_ORDER = ['line','circle','oval','square','rect','triangle','diamond','star','heart','arrow'];
+const NUMBER_ORDER = ['0','1','2','3','4','5','6','7','8','9'];
+const LETTER_ORDER = ['А','Б','В','Г','Д','Е','Ж','З','И','Й','К','Л','М','Н','О','П','Р','С','Т','У','Ф','Х','Ц','Ч','Ш','Щ','Ъ','Ы','Ь','Э','Ю','Я'];
+const LETTER_NAMES = {'А':'а','Б':'бэ','В':'вэ','Г':'гэ','Д':'дэ','Е':'е','Ж':'жэ','З':'зэ','И':'и','Й':'и краткое','К':'ка','Л':'эль','М':'эм','Н':'эн','О':'о','П':'пэ','Р':'эр','С':'эс','Т':'тэ','У':'у','Ф':'эф','Х':'ха','Ц':'цэ','Ч':'че','Ш':'ша','Щ':'ща','Ъ':'твёрдый знак','Ы':'ы','Ь':'мягкий знак','Э':'э','Ю':'ю','Я':'я'};
+
+const _svgHelper = document.createElementNS('http://www.w3.org/2000/svg','svg');
+_svgHelper.setAttribute('viewBox','0 0 100 100');
+_svgHelper.style.cssText = 'position:absolute;width:0;height:0;overflow:hidden;pointer-events:none;';
+document.body.appendChild(_svgHelper);
+function samplePath(d, numSamples = 80) {
+  const p = document.createElementNS('http://www.w3.org/2000/svg','path');
+  p.setAttribute('d', d);
+  _svgHelper.appendChild(p);
+  const len = p.getTotalLength();
+  const pts = [];
+  const n = Math.max(20, Math.min(numSamples * 3, Math.ceil(len * 2)));
+  for (let i = 0; i <= n; i++) {
+    const pt = p.getPointAtLength(len * i / n);
+    pts.push({ x: pt.x, y: pt.y });
+  }
+  _svgHelper.removeChild(p);
+  return pts;
+}
+
+class TracingPad {
+  constructor(canvas) {
+    this.canvas = canvas;
+    this.ctx = canvas.getContext('2d');
+    this.off = document.createElement('canvas');
+    this.octx = this.off.getContext('2d', { willReadFrequently: true });
+    this.dpr = 1; this.size = 0; this.grid = 20;
+    this.drawing = false;
+    this.shouldCover = new Set(); this.covered = new Set();
+    this.completed = false; this.strokes = []; this.char = ''; this.templateChar = '';
+    this.animating = false;
+    this.onProgress = null; this.onSuccess = null;
+    this.setupPointer();
+  }
+  resize() {
+    const rect = this.canvas.parentElement.getBoundingClientRect();
+    const size = Math.floor(Math.min(rect.width, rect.height));
+    if (size < 80) return;
+    this.dpr = window.devicePixelRatio || 1;
+    this.size = size;
+    this.canvas.width = size * this.dpr; this.canvas.height = size * this.dpr;
+    this.off.width = size; this.off.height = size;
+    this.redrawTemplate(); this.rebuildMask();
+  }
+  setChar(char, strokes, options = {}) {
+    this.char = char; this.strokes = strokes || []; this.templateChar = char;
+    this.covered = new Set(); this.completed = false;
+    this.redrawTemplate(); this.rebuildMask();
+    if (this.onProgress) this.onProgress(0);
+    if (options.animate && this.strokes.length) setTimeout(() => this.playDemo(), 400);
+  }
+  clearTraces() { this.covered = new Set(); this.completed = false; this.redrawTemplate(); if (this.onProgress) this.onProgress(0); }
+  redrawTemplate() {
+    const ctx = this.ctx, s = this.size; if (!s) return;
+    ctx.setTransform(1,0,0,1,0,0); ctx.scale(this.dpr, this.dpr);
+    ctx.clearRect(0,0,s,s);
+    if (!SHAPE_ORDER.includes(this.char)) {
+      ctx.strokeStyle = '#f0d0e0'; ctx.lineWidth = 1;
+      ctx.setLineDash([6,6]);
+      ctx.beginPath(); ctx.moveTo(0,s/2); ctx.lineTo(s,s/2); ctx.stroke();
+      ctx.setLineDash([]);
+    }
+    if (this.strokes.length) {
+      ctx.save();
+      ctx.strokeStyle = '#ecd8f0';
+      ctx.lineWidth = Math.max(10, s * 0.055);
+      ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      this.strokes.forEach(d => {
+        const pts = samplePath(d, 60);
+        ctx.beginPath();
+        pts.forEach((pt, i) => {
+          const x = pt.x / 100 * s, y = pt.y / 100 * s;
+          if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        });
+        ctx.stroke();
+      });
+      ctx.restore();
+    }
+  }
+  rebuildMask() {
+    const s = this.size; if (!s) return;
+    const octx = this.octx;
+    octx.setTransform(1,0,0,1,0,0); octx.clearRect(0,0,s,s);
+    if (this.strokes.length) {
+      octx.strokeStyle = '#000';
+      octx.lineWidth = Math.max(16, s * 0.09);
+      octx.lineCap = 'round'; octx.lineJoin = 'round';
+      this.strokes.forEach(d => {
+        const pts = samplePath(d, 40);
+        octx.beginPath();
+        pts.forEach((pt, i) => {
+          const x = pt.x / 100 * s, y = pt.y / 100 * s;
+          if (i === 0) octx.moveTo(x, y); else octx.lineTo(x, y);
+        });
+        octx.stroke();
+      });
+    }
+    const data = octx.getImageData(0, 0, s, s).data;
+    const g = this.grid, cs = s / g;
+    this.shouldCover = new Set();
+    for (let cy = 0; cy < g; cy++) for (let cx = 0; cx < g; cx++) {
+      let hits = 0;
+      for (let sy = 0; sy < 3; sy++) for (let sx = 0; sx < 3; sx++) {
+        const px = Math.floor((cx + (sx + 0.5) / 3) * cs);
+        const py = Math.floor((cy + (sy + 0.5) / 3) * cs);
+        if (px < 0 || px >= s || py < 0 || py >= s) continue;
+        const i = (py * s + px) * 4;
+        if (data[i + 3] > 100) hits++;
+      }
+      if (hits >= 2) this.shouldCover.add(cx + ',' + cy);
+    }
+  }
+  markCovered(x, y) {
+    const g = this.grid, s = this.size;
+    const cx = Math.floor(x / s * g), cy = Math.floor(y / s * g);
+    for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) {
+      const k = (cx + dx) + ',' + (cy + dy);
+      if (this.shouldCover.has(k)) this.covered.add(k);
+    }
+  }
+  progress() { return this.shouldCover.size === 0 ? 0 : this.covered.size / this.shouldCover.size; }
+  checkProgress() {
+    const p = this.progress();
+    if (this.onProgress) this.onProgress(p);
+    if (p >= 0.55 && !this.completed) { this.completed = true; if (this.onSuccess) this.onSuccess(); }
+  }
+  setupPointer() {
+    const getXY = (cx, cy) => {
+      const r = this.canvas.getBoundingClientRect();
+      const scale = this.size / r.width;
+      return [(cx - r.left) * scale, (cy - r.top) * scale];
+    };
+    let lastPt = null;
+    const start = (x, y) => {
+      if (this.animating) return;
+      this.drawing = true; lastPt = [x, y];
+      this.ctx.strokeStyle = '#d63a8f';
+      this.ctx.lineWidth = Math.max(12, this.size * 0.05);
+      this.ctx.lineCap = 'round'; this.ctx.lineJoin = 'round';
+      this.ctx.beginPath(); this.ctx.moveTo(x, y); this.ctx.lineTo(x+0.01, y+0.01); this.ctx.stroke();
+      this.markCovered(x, y);
+    };
+    const move = (x, y) => {
+      if (!this.drawing) return;
+      this.ctx.beginPath(); this.ctx.moveTo(lastPt[0], lastPt[1]); this.ctx.lineTo(x, y); this.ctx.stroke();
+      this.markCovered(x, y);
+      lastPt = [x, y]; this.checkProgress();
+    };
+    const end = () => { if (!this.drawing) return; this.drawing = false; this.checkProgress(); };
+    const c = this.canvas;
+    c.addEventListener('touchstart', e => { e.preventDefault(); const t = e.touches[0]; const [x,y] = getXY(t.clientX,t.clientY); start(x,y); }, { passive: false });
+    c.addEventListener('touchmove',  e => { e.preventDefault(); const t = e.touches[0]; const [x,y] = getXY(t.clientX,t.clientY); move(x,y); }, { passive: false });
+    c.addEventListener('touchend',   e => { e.preventDefault(); end(); }, { passive: false });
+    c.addEventListener('touchcancel', end);
+    c.addEventListener('mousedown', e => { const [x,y] = getXY(e.clientX,e.clientY); start(x,y); });
+    c.addEventListener('mousemove', e => { if (!this.drawing) return; const [x,y] = getXY(e.clientX,e.clientY); move(x,y); });
+    c.addEventListener('mouseup', end);
+    c.addEventListener('mouseleave', end);
+  }
+  async playDemo() {
+    if (this.animating) return;
+    this.animating = true;
+    this.clearTraces();
+    const s = this.size, ctx = this.ctx;
+    ctx.save();
+    ctx.strokeStyle = '#ff7eb3';
+    ctx.lineWidth = Math.max(10, s * 0.05);
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    const strokesPts = this.strokes.map(d => samplePath(d, 60));
+    await sleep(200);
+    for (let si = 0; si < strokesPts.length; si++) {
+      const pts = strokesPts[si];
+      if (!pts.length) continue;
+      const sx = pts[0].x / 100 * s, sy = pts[0].y / 100 * s;
+      ctx.save();
+      ctx.fillStyle = '#ff4d7e';
+      ctx.beginPath(); ctx.arc(sx, sy, Math.max(8, s * 0.035), 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; ctx.stroke();
+      ctx.restore();
+      await sleep(350);
+      let i = 1;
+      while (i < pts.length && this.animating) {
+        const steps = Math.min(2, pts.length - i);
+        ctx.beginPath();
+        ctx.moveTo(pts[i-1].x/100*s, pts[i-1].y/100*s);
+        for (let k = 0; k < steps; k++) ctx.lineTo(pts[i+k].x/100*s, pts[i+k].y/100*s);
+        ctx.stroke();
+        i += steps;
+        await new Promise(r => requestAnimationFrame(r));
+      }
+      if (this.animating) await sleep(400);
+    }
+    if (this.animating) { await sleep(800); if (this.animating) this.clearTraces(); }
+    ctx.restore();
+    this.animating = false;
+  }
+  stopDemo() { this.animating = false; this.clearTraces(); }
+}
+
+let writeMode = 'numbers';
+let writeIdx = 0;
+let tracePad = null;
+let traceInitialized = false;
+const getCurrentOrder = () => writeMode === 'numbers' ? NUMBER_ORDER : writeMode === 'letters' ? LETTER_ORDER : SHAPE_ORDER;
+function getCharInfo(ch) {
+  if (writeMode === 'numbers') return { char: ch, strokes: STROKE_DATA.numbers[ch].strokes, speak: `Цифра ${STROKE_DATA.numbers[ch].word}` };
+  if (writeMode === 'letters') return { char: ch, strokes: STROKE_DATA.letters[ch] || [], speak: `Буква ${LETTER_NAMES[ch] || ch}` };
+  return { char: ch, strokes: STROKE_DATA.shapes[ch].strokes, speak: STROKE_DATA.shapes[ch].name };
+}
+document.querySelectorAll('[data-write]').forEach(b => {
+  b.onclick = () => {
+    document.querySelectorAll('[data-write]').forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    writeMode = b.dataset.write; writeIdx = 0;
+    if (tracePad) tracePad.stopDemo();
+    buildCharPicker(); loadWriteChar(false); soundClick();
+  };
+});
+function buildCharPicker() {
+  const list = getCurrentOrder();
+  const picker = document.getElementById('char-picker');
+  picker.innerHTML = '';
+  const icons = { line:'━', circle:'○', oval:'⬭', square:'□', rect:'▭', triangle:'△', diamond:'◇', star:'☆', heart:'♡', arrow:'→' };
+  list.forEach((ch, i) => {
+    const b = document.createElement('button');
+    b.className = 'char-btn' + (i === writeIdx ? ' active' : '');
+    b.textContent = writeMode === 'shapes' ? (icons[ch] || '?') : ch;
+    b.onclick = () => { writeIdx = i; if (tracePad) tracePad.stopDemo(); soundClick(); buildCharPicker(); loadWriteChar(true); };
+    picker.appendChild(b);
+  });
+  const active = picker.querySelector('.char-btn.active');
+  if (active) setTimeout(() => active.scrollIntoView({ behavior:'smooth', inline:'center', block:'nearest' }), 50);
+}
+function loadWriteChar(autoDemo = false) {
+  const list = getCurrentOrder();
+  const info = getCharInfo(list[writeIdx]);
+  document.getElementById('trace-progress-bar').style.width = '0%';
+  document.getElementById('trace-hint').textContent = autoDemo ? 'Смотри, как писать ✏️' : 'Обведи пальчиком';
+  if (!tracePad) return;
+  if (tracePad.size === 0) tracePad.resize();
+  tracePad.setChar(info.char, info.strokes, { animate: false });
+  setTimeout(() => {
+    if (autoDemo) {
+      speakLively('Смотри, как писать. ' + info.speak);
+      setTimeout(() => tracePad.playDemo(), 1600);
+    } else {
+      speakLively(info.speak + '. Обведи пальчиком.');
+    }
+  }, 250);
+}
+function playDemo() {
+  if (!tracePad) return;
+  const info = getCharInfo(getCurrentOrder()[writeIdx]);
+  speakLively('Смотри внимательно. ' + info.speak);
+  setTimeout(() => tracePad.playDemo(), 1500);
+}
+function traceSpeak() { speakLively(getCharInfo(getCurrentOrder()[writeIdx]).speak); }
+function traceClear() {
+  if (tracePad) tracePad.stopDemo();
+  soundClick();
+  document.getElementById('trace-hint').textContent = 'Обведи пальчиком';
+  document.getElementById('trace-progress-bar').style.width = '0%';
+}
+function traceNext() {
+  const list = getCurrentOrder();
+  writeIdx = (writeIdx + 1) % list.length;
+  if (tracePad) tracePad.stopDemo();
+  buildCharPicker(); loadWriteChar(true); soundClick();
+}
+function tracePrev() {
+  const list = getCurrentOrder();
+  writeIdx = (writeIdx - 1 + list.length) % list.length;
+  if (tracePad) tracePad.stopDemo();
+  buildCharPicker(); loadWriteChar(true); soundClick();
+}
+function initTracing() {
+  const canvas = document.getElementById('trace-canvas');
+  if (!tracePad) {
+    tracePad = new TracingPad(canvas);
+    tracePad.onProgress = (p) => { document.getElementById('trace-progress-bar').style.width = Math.min(100, p * 130) + '%'; };
+    tracePad.onSuccess = () => {
+      if (tracePad.animating) return;
+      addStar(); vib(60); soundRight();
+      document.getElementById('trace-hint').textContent = '✨ Молодец! ✨';
+      setTimeout(() => speakCheer(praise()), 300);
+    };
+  }
+  requestAnimationFrame(() => {
+    tracePad.resize(); buildCharPicker();
+    loadWriteChar(!traceInitialized);
+    traceInitialized = true;
+  });
+}
+window.addEventListener('resize', () => { if (tracePad) tracePad.resize(); });
+window.addEventListener('orientationchange', () => setTimeout(() => { if (tracePad) tracePad.resize(); }, 300));
+
+/* ==================== АЗБУКА ==================== */
+const ALPHABET = [
+  {ch:'А', word:'Арбуз', emoji:'🍉'}, {ch:'Б', word:'Бабочка', emoji:'🦋'},
+  {ch:'В', word:'Волк', emoji:'🐺'}, {ch:'Г', word:'Гриб', emoji:'🍄'},
+  {ch:'Д', word:'Дом', emoji:'🏠'}, {ch:'Е', word:'Ель', emoji:'🌲'},
+  {ch:'Ё', word:'Ёжик', emoji:'🦔'}, {ch:'Ж', word:'Жук', emoji:'🐞'},
+  {ch:'З', word:'Зебра', emoji:'🦓'}, {ch:'И', word:'Игрушка', emoji:'🧸'},
+  {ch:'Й', word:'Йогурт', emoji:'🥛'}, {ch:'К', word:'Кот', emoji:'🐱'},
+  {ch:'Л', word:'Лиса', emoji:'🦊'}, {ch:'М', word:'Мяч', emoji:'⚽'},
+  {ch:'Н', word:'Ножницы', emoji:'✂️'}, {ch:'О', word:'Облако', emoji:'☁️'},
+  {ch:'П', word:'Пингвин', emoji:'🐧'}, {ch:'Р', word:'Рыба', emoji:'🐟'},
+  {ch:'С', word:'Солнце', emoji:'☀️'}, {ch:'Т', word:'Торт', emoji:'🎂'},
+  {ch:'У', word:'Улитка', emoji:'🐌'}, {ch:'Ф', word:'Флаг', emoji:'🚩'},
+  {ch:'Х', word:'Хлеб', emoji:'🍞'}, {ch:'Ц', word:'Цветок', emoji:'🌸'},
+  {ch:'Ч', word:'Часы', emoji:'⏰'}, {ch:'Ш', word:'Шарик', emoji:'🎈'},
+  {ch:'Щ', word:'Щенок', emoji:'🐶'}, {ch:'Ъ', word:'Твёрдый знак', emoji:'📌'},
+  {ch:'Ы', word:'Буква Ы', emoji:'📌'}, {ch:'Ь', word:'Мягкий знак', emoji:'📌'},
+  {ch:'Э', word:'Эскимо', emoji:'🍦'}, {ch:'Ю', word:'Юла', emoji:'🌀'},
+  {ch:'Я', word:'Яблоко', emoji:'🍎'}
+];
+let alphaMode = 'letters';
+let alphaIdx = 0;
+document.querySelectorAll('[data-alpha]').forEach(b => {
+  b.onclick = () => {
+    document.querySelectorAll('[data-alpha]').forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    alphaMode = b.dataset.alpha; alphaIdx = 0;
+    renderAlpha(); soundClick();
+  };
+});
+function renderAlpha() {
+  const isL = alphaMode === 'letters';
+  const item = isL ? ALPHABET[alphaIdx] : { ch: String(alphaIdx), word: NUM_WORDS[alphaIdx], emoji: '' };
+  document.getElementById('alpha-letter').textContent = item.ch;
+  document.getElementById('alpha-text').textContent = isL ? item.word : (NUM_WORDS[alphaIdx].charAt(0).toUpperCase() + NUM_WORDS[alphaIdx].slice(1));
+  const emojiEl = document.getElementById('alpha-emoji');
+  emojiEl.textContent = isL ? item.emoji : '';
+  emojiEl.style.display = isL ? '' : 'none';
+  const dotsEl = document.getElementById('number-dots');
+  if (!isL && alphaIdx > 0) dotsEl.innerHTML = Array(alphaIdx).fill(0).map(() => `<div class="dot">${svgStar('#ffd54f', 30)}</div>`).join('');
+  else dotsEl.innerHTML = '';
+  const total = isL ? ALPHABET.length : NUM_WORDS.length;
+  document.getElementById('alpha-progress').textContent = `${alphaIdx + 1} / ${total}`;
+  setTimeout(speakAlpha, 250);
+}
+function speakAlpha() {
+  const isL = alphaMode === 'letters';
+  if (isL) {
+    const it = ALPHABET[alphaIdx];
+    speakLively(`Буква ${LETTER_NAMES[it.ch] || it.ch}. ${it.word}!`);
+  } else {
+    const n = alphaIdx;
+    if (n === 0) speakLively('Цифра ноль. Ничего нет!');
+    else speakLively(`Цифра ${numWord(n)}! ${n} ${itemPlural(n, 'звёздочка')}.`);
+  }
+}
+function alphaPrev() { const t = alphaMode === 'letters' ? ALPHABET.length : NUM_WORDS.length; alphaIdx = (alphaIdx - 1 + t) % t; soundClick(); renderAlpha(); }
+function alphaNext() { const t = alphaMode === 'letters' ? ALPHABET.length : NUM_WORDS.length; alphaIdx = (alphaIdx + 1) % t; soundClick(); renderAlpha(); }
+
+/* ==================== ЦВЕТА ==================== */
+const colorTasks = [
+  { name: 'красный', hex: '#e53935' }, { name: 'синий', hex: '#1e88e5' },
+  { name: 'зелёный', hex: '#43a047' }, { name: 'жёлтый', hex: '#fdd835' },
+  { name: 'розовый', hex: '#ec407a' }, { name: 'фиолетовый', hex: '#8e24aa' },
+  { name: 'оранжевый', hex: '#fb8c00' }
+];
+function newColor() {
+  const correct = pick(colorTasks);
+  const others = colorTasks.filter(c => c.name !== correct.name).sort(() => Math.random() - .5).slice(0, 3);
+  const choices = [correct, ...others].sort(() => Math.random() - .5);
+  document.getElementById('colors-fb').textContent = '';
+  document.getElementById('colors-board').innerHTML = svgBow(correct.hex, 130);
+  const opts = document.getElementById('colors-options'); opts.innerHTML = '';
+  choices.forEach(c => {
+    const b = document.createElement('button');
+    b.className = 'btn-color'; b.style.background = c.hex;
+    b.onclick = () => {
+      soundClick(); speak(c.name, 1.0, 1.3);
+      const fb = document.getElementById('colors-fb');
+      if (c.name === correct.name) {
+        b.classList.add('right');
+        fb.textContent = 'Правильно! 🎀'; fb.style.color = '#4caf50';
+        soundRight(); vib(40); addStar();
+        setTimeout(() => speakCheer(praise() + ' Это ' + correct.name + ' цвет!'), 300);
+        opts.querySelectorAll('.btn-color').forEach(x => x.disabled = true);
+      } else {
+        b.classList.add('wrong');
+        fb.textContent = 'Другой цвет 🤔'; fb.style.color = '#e91e63';
+        soundWrong(); vib(80);
+        setTimeout(() => speakLively('Это ' + c.name + '. ' + encourage()), 300);
+      }
+    };
+    opts.appendChild(b);
+  });
+  setTimeout(askColor, 350);
+}
+function askColor() { speakLively('Какого цвета бантик?'); }
+
+/* ==================== ЛОГИКА ==================== */
+const logicSets = [
+  { items: () => [ {svg:svgFlower('#ff7eb3'),odd:false},{svg:svgFlower('#ba68c8'),odd:false},{svg:svgFlower('#64b5f6'),odd:false},{svg:svgStar('#ffd54f'),odd:true} ] },
+  { items: () => [ {svg:svgHeart('#ff4d7e'),odd:false},{svg:svgHeart('#ec407a'),odd:false},{svg:svgHeart('#f06292'),odd:false},{svg:svgBalloon('#ff4d7e'),odd:true} ] },
+  { items: () => [ {svg:svgCat(),odd:false},{svg:svgCat(),odd:false},{svg:svgCat(),odd:false},{svg:svgStar('#ffd54f'),odd:true} ] },
+  { items: () => [ {svg:svgBow('#ff7eb3'),odd:false},{svg:svgBow('#ba68c8'),odd:false},{svg:svgBow('#64b5f6'),odd:false},{svg:svgCupcake(),odd:true} ] },
+  { items: () => [ {svg:svgSun(),odd:false},{svg:svgSun(),odd:false},{svg:svgSun(),odd:false},{svg:svgButterfly(),odd:true} ] }
+];
+function newLogic() {
+  const set = pick(logicSets);
+  const items = set.items().sort(() => Math.random() - .5);
+  document.getElementById('logic-fb').textContent = '';
+  const board = document.getElementById('logic-board');
+  board.innerHTML = '';
+  items.forEach(it => {
+    const div = document.createElement('div');
+    div.className = 'item'; div.innerHTML = it.svg;
+    div.style.cursor = 'pointer';
+    div.onclick = () => {
+      soundClick();
+      const fb = document.getElementById('logic-fb');
+      if (it.odd) {
+        fb.textContent = 'Умница! ✨'; fb.style.color = '#4caf50';
+        soundRight(); vib(40); addStar();
+        setTimeout(() => speakCheer('Умница! Ты нашла лишнюю картинку!'), 300);
+        board.querySelectorAll('.item').forEach(x => x.style.pointerEvents = 'none');
+        div.style.filter = 'drop-shadow(0 0 12px #4caf50)';
+      } else {
+        fb.textContent = 'Похоже на остальные 💗'; fb.style.color = '#e91e63';
+        soundWrong(); vib(80);
+        setTimeout(() => speakLively('Это похоже на остальные. Найди другую'), 300);
+        div.style.opacity = '0.4';
+      }
+    };
+    board.appendChild(div);
+  });
+  setTimeout(askLogic, 350);
+}
+function askLogic() { speakLively('Найди лишнюю картинку. Что здесь не подходит?'); }
+
+/* ==================== ПАМЯТЬ ==================== */
+const memoryEmojis = [
+  { ch: '🌸', name: 'цветок' }, { ch: '🦋', name: 'бабочка' },
+  { ch: '🎀', name: 'бантик' }, { ch: '⭐', name: 'звёздочка' },
+  { ch: '🍰', name: 'тортик' }, { ch: '🌷', name: 'тюльпан' }
+];
+let memoryState = { first: null, matched: 0, lock: false };
+function initMemory() {
+  memoryState = { first: null, matched: 0, lock: false };
+  document.getElementById('memory-fb').textContent = '';
+  document.getElementById('memory-progress').textContent = 'Найдено пар: 0 / 6';
+  const cards = [...memoryEmojis, ...memoryEmojis].map(e => ({ ...e, id: Math.random() })).sort(() => Math.random() - .5);
+  const board = document.getElementById('memory-board');
+  board.innerHTML = '';
+  cards.forEach(c => {
+    const d = document.createElement('div');
+    d.className = 'card hidden-emoji';
+    d.textContent = c.ch; d.dataset.emoji = c.ch; d.dataset.name = c.name;
+    d.onclick = () => flipCard(d);
+    board.appendChild(d);
+  });
+  setTimeout(() => speakLively('Найди пару. Открывай карточки и запоминай!'), 350);
+}
+function flipCard(card) {
+  if (memoryState.lock) return;
+  if (card.classList.contains('flipped') || card.classList.contains('matched')) return;
+  card.classList.remove('hidden-emoji');
+  card.classList.add('flipped');
+  beep(500, 0.08);
+  speakLively(card.dataset.name, { rate: 1.0, pitch: 1.4 });
+  if (!memoryState.first) { memoryState.first = card; return; }
+  if (memoryState.first === card) return;
+  const a = memoryState.first, b = card;
+  if (a.dataset.emoji === b.dataset.emoji) {
+    a.classList.add('matched'); b.classList.add('matched');
+    memoryState.matched++; memoryState.first = null;
+    document.getElementById('memory-progress').textContent = `Найдено пар: ${memoryState.matched} / 6`;
+    document.getElementById('memory-fb').textContent = 'Пара! 💖';
+    document.getElementById('memory-fb').style.color = '#4caf50';
+    soundRight(); vib(40);
+    setTimeout(() => speakCheer('Пара! ' + praise()), 400);
+    if (memoryState.matched === 6) {
+      addStar(); addStar();
+      document.getElementById('memory-fb').textContent = 'Победа! 🏆';
+      setTimeout(() => speakCheer('Ура! Ты нашла все пары! Ты победила!'), 700);
+    }
+  } else {
+    memoryState.lock = true;
+    document.getElementById('memory-fb').textContent = 'Не пара 🙈';
+    document.getElementById('memory-fb').style.color = '#e91e63';
+    soundWrong(); vib(80);
+    setTimeout(() => speakLively('Не пара'), 300);
+    setTimeout(() => {
+      a.classList.add('hidden-emoji'); a.classList.remove('flipped');
+      b.classList.add('hidden-emoji'); b.classList.remove('flipped');
+      memoryState.first = null; memoryState.lock = false;
+      document.getElementById('memory-fb').textContent = '';
+    }, 1200);
+  }
+}
+
+/* ==================== НАВИГАЦИЯ ==================== */
+const tabNames = {
+  math: 'Играем в счёт! Посчитай предметы',
+  addsub: 'Решаем примеры! Сложение и вычитание',
+  alphabet: 'Азбука. Учим буквы',
+  write: 'Прописи. Учимся писать',
+  colors: 'Играем в цвета',
+  memory: 'Играем в память. Найди пару'
+};
+function switchTab(tab) {
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + tab).classList.add('active');
+  document.querySelector('.main-scroll').scrollTop = 0;
+  beep(700, 0.08);
+  speakLively(tabNames[tab]);
+  if (tab === 'math') setTimeout(newMath, 1200);
+  if (tab === 'addsub') setTimeout(newAddSub, 1200);
+  if (tab === 'alphabet') setTimeout(renderAlpha, 1200);
+  if (tab === 'write') setTimeout(initTracing, 1200);
+  if (tab === 'colors') setTimeout(newColor, 1200);
+  if (tab === 'memory') setTimeout(initMemory, 1200);
+}
+document.getElementById('bottomNav').addEventListener('click', e => {
+  const btn = e.target.closest('.nav-btn');
+  if (!btn) return;
+  switchTab(btn.dataset.tab);
+});
+
+/* ==================== ДИАГНОСТИКА / СТАРТ ==================== */
+document.getElementById('diagBtn').onclick = () => {
+  const p = document.getElementById('diagPanel');
+  p.classList.toggle('show');
+  TTS.init(); TTS.updateDiag();
+};
+document.getElementById('testVoiceBtn').onclick = () => {
+  try { if (!actx) actx = new AudioCtx(); actx.resume(); } catch(e) {}
+  try {
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance('Раз, два, три. Голос работает!');
+    u.lang = 'ru-RU'; u.rate = 0.9; u.pitch = 1.3;
+    if (TTS.ruVoice) u.voice = TTS.ruVoice;
+    speechSynthesis.speak(u);
+  } catch(e) { alert('Ошибка: ' + e.message); }
+};
+document.getElementById('hintBtn').onclick = () => {
+  const active = document.querySelector('.screen.active');
+  if (!active) return;
+  const id = active.id;
+  if (id === 'screen-math') askMath();
+  else if (id === 'screen-addsub') { if (asState) asMode === 'add' ? speakLively(`Давай сложим. ${asState.a} плюс ${asState.b}`) : speakLively(`Давай вычтем. ${asState.a} минус ${asState.b}`); }
+  else if (id === 'screen-colors') askColor();
+  else if (id === 'screen-logic') askLogic();
+  else if (id === 'screen-alphabet') speakAlpha();
+  else if (id === 'screen-write') traceSpeak();
+  else if (id === 'screen-memory') speakLively('Найди пару. Открывай карточки.');
+};
+document.getElementById('startBtn').onclick = () => {
+  try { if (!actx) actx = new AudioCtx(); actx.resume(); } catch(e) {}
+  if (TTS.supported) {
+    try {
+      speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance('Привет!');
+      u.lang = 'ru-RU'; u.volume = 1; u.rate = 1; u.pitch = 1.3;
+      if (TTS.ruVoice) u.voice = TTS.ruVoice;
+      speechSynthesis.speak(u);
+    } catch(e) {}
+  }
+  setTimeout(() => TTS.init(), 100);
+  document.getElementById('startOverlay').classList.add('hide');
+  setTimeout(() => {
+    speakCheer(pick(HELLO));
+    setTimeout(() => speakLively('Давай посчитаем предметы!', { rate: 0.9, pitch: 1.35 }), 2200);
+    setTimeout(newMath, 3200);
+  }, 300);
+};
+
+newMath();
+</script>
+</body>
+</html>
